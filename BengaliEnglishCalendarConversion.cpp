@@ -5,7 +5,6 @@
 
 using namespace std;
 
-// --- CORE UTILITIES & LEAP YEAR CONTROLS ---
 bool isGregorianLeap(int year) {
     if (year % 400 == 0) return true;
     if (year % 100 == 0) return false;
@@ -30,7 +29,6 @@ int getDayOfWeekNum(int d, int m, int y) {
     return (q + 13 * (m + 1) / 5 + k + k / 4 + j / 4 + 5 * j) % 7;
 }
 
-// Convert a Gregorian date to Day of Year (1-365/366)
 int getDayOfYear(int d, int m, int y) {
     int mLen[] = {0, 31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31};
     if (isGregorianLeap(y)) mLen[2] = 29;
@@ -39,7 +37,6 @@ int getDayOfYear(int d, int m, int y) {
     return dayCount + d;
 }
 
-// Find Gregorian date from Day of Year
 void getGregorianFromDayOfYear(int doy, int y, int &d, int &m) {
     int mLen[] = {0, 31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31};
     if (isGregorianLeap(y)) mLen[2] = 29;
@@ -51,7 +48,6 @@ void getGregorianFromDayOfYear(int doy, int y, int &d, int &m) {
     d = doy;
 }
 
-// --- OPTION 2: MULTI-CALENDAR DATE CONVERTER ---
 void printJulianDate(int d, int m, int y) {
     int gregMonths[] = {0, 31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31};
     if (isGregorianLeap(y)) gregMonths[2] = 29;
@@ -79,13 +75,12 @@ void printJulianDate(int d, int m, int y) {
     cout << "Julian Date            : " << julianDays << " " << monthNames[julianMonth] << " " << julianYear << "\n";
 }
 
-// Regional Engine supporting all four versions
 void getBanglaDateDetails(int d, int m, int y, int ver, int &bd, string &bm, int &by) {
     string bMonths[] = {"Boishakh", "Jyoishtho", "Asharh", "Shrabon", "Bhadro", "Ashshin", "Kartik", "Ogrohayon", "Poush", "Magh", "Falgun", "Choitro"};
     int doy = getDayOfYear(d, m, y);
 
-    int startOffset = 104; // Default April 14
-    if (ver == 3) startOffset = 105; // Indian versions start on April 15
+    int startOffset = 104;
+    if (ver == 3) startOffset = 105;
     if (isGregorianLeap(y)) startOffset++;
 
     by = (doy >= startOffset) ? (y - 593) : (y - 594);
@@ -100,19 +95,19 @@ void getBanglaDateDetails(int d, int m, int y, int ver, int &bd, string &bm, int
     }
 
     int bLens[12];
-    if (ver == 1) { // BD 1987 Standard
+    if (ver == 1) {
         int base[] = {31, 31, 31, 31, 31, 30, 30, 30, 30, 30, 30, 30};
         for(int i=0; i<12; i++) bLens[i] = base[i];
-        if ((isGregorianLeap(y) && m <= 4) || (isGregorianLeap(y + 1) && m > 4)) bLens[10] = 31; // Falgun = 31
-    } else if (ver == 2) { // BD 2019 Standard
+        if ((isGregorianLeap(y) && m <= 4) || (isGregorianLeap(y + 1) && m > 4)) bLens[10] = 31;
+    } else if (ver == 2) {
         int base[] = {31, 31, 31, 31, 31, 31, 30, 30, 30, 30, 29, 30};
         for(int i=0; i<12; i++) bLens[i] = base[i];
-        if ((isGregorianLeap(y) && m <= 4) || (isGregorianLeap(y + 1) && m > 4)) bLens[10] = 30; // Falgun = 30
-    } else if (ver == 3) { // Indian Traditional
+        if ((isGregorianLeap(y) && m <= 4) || (isGregorianLeap(y + 1) && m > 4)) bLens[10] = 30;
+    } else if (ver == 3) {
         int base[] = {31, 31, 32, 31, 31, 31, 30, 29, 29, 30, 30, 30};
         for(int i=0; i<12; i++) bLens[i] = base[i];
         if (isGregorianLeap(y)) bLens[11] = 31;
-    } else { // Indian National (Saha Committee)
+    } else {
         int base[] = {31, 31, 31, 31, 31, 30, 30, 30, 30, 30, 30, 30};
         for(int i=0; i<12; i++) bLens[i] = base[i];
         if (isGregorianLeap(y)) bLens[11] = 31;
@@ -152,7 +147,6 @@ void runDateConversionOption() {
     cout << "=========================================================\n";
 }
 
-// --- OPTION 1: YEAR CALENDAR GENERATORS ---
 void printEnglishMonthGrid(int month, int year) {
     string months[] = {"", "January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"};
     int mLen[] = {0, 31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31};
@@ -162,7 +156,6 @@ void printEnglishMonthGrid(int month, int year) {
     cout << "  S   M   T   W   T   F   S\n";
 
     int startDay = getDayOfWeekNum(1, month, year);
-    // Align Zeller (0=Sat, 1=Sun...) to Matrix print (0=Sun, 1=Mon...)
     int spaces = (startDay + 1) % 7;
 
     for (int i = 0; i < spaces; i++) cout << "    ";
@@ -178,9 +171,8 @@ void printBanglaMonthGrid(int bMonthIdx, int bYear, int version) {
     cout << "\n      " << bMonths[bMonthIdx] << " " << bYear << " BS\n";
     cout << "  S   M   T   W   T   F   S\n";
 
-    // Map the 1st day of this Bangla month back to a Gregorian anchor day
     int gregYear = bYear + 593;
-    int baseDoy = (version == 3) ? 105 : 104; // April 15 vs April 14
+    int baseDoy = (version == 3) ? 105 : 104;
     if (isGregorianLeap(gregYear)) baseDoy++;
 
     int bLens[12];
@@ -254,7 +246,6 @@ void runYearCalendarOption() {
     }
 }
 
-// --- MAIN CONTROLLER LOOP ---
 int main() {
     while (true) {
         cout << "\n=============================================\n";
