@@ -2,8 +2,76 @@
 #include <string>
 #include <iomanip>
 #include <vector>
+#include <limits>
+
+#define _USE_MATH_DEFINES
+#include <cmath>
+
+#ifndef M_PI
+#define M_PI 3.14159265358979323846
+#endif
 
 using namespace std;
+
+double dateToJD(int year, int month, int day) {
+    if (month <= 2) { year -= 1; month += 12; }
+    int A = year / 100;
+    int B = 2 - A + (A / 4);
+    return floor(365.25 * (year + 4716)) + floor(30.6001 * (month + 1)) + day + B - 1524.5;
+}
+
+double getSunTropicalLongitude(double jd) {
+    double n = jd - 2451545.0;
+    double L = fmod(280.460 + 0.9856474 * n, 360.0);
+    double g = fmod(357.528 + 0.9856003 * n, 360.0) * M_PI / 180.0;
+    double lambda = L + 1.915 * sin(g) + 0.020 * sin(2 * g);
+    return fmod(lambda + 360.0, 360.0);
+}
+
+double getAyanamsa(double jd) {
+    double year = 2000.0 + (jd - 2451545.0) / 365.25;
+    return 23.85 + 0.01397 * (year - 2000.0);
+}
+
+double getSiderealLongitude(double jd) {
+    double trop = getSunTropicalLongitude(jd);
+    double ay = getAyanamsa(jd);
+    double sid = trop - ay;
+    if (sid < 0) sid += 360.0;
+    return sid;
+}
+
+double findSankranti(double targetLong, double startJD) {
+    double jd = startJD;
+    double prevLong = getSiderealLongitude(jd);
+    for (int i = 0; i < 40; i++) {
+        jd += 1.0;
+        double currLong = getSiderealLongitude(jd);
+        bool crossed = false;
+
+        if (targetLong == 0) {
+            if (prevLong > 300 && currLong < 60) crossed = true;
+        } else {
+            if (prevLong < targetLong && currLong >= targetLong) crossed = true;
+        }
+
+        if (crossed) {
+            double low = jd - 1.0, high = jd;
+            for (int k = 0; k < 20; k++) {
+                double mid = (low + high) / 2.0;
+                double midLong = getSiderealLongitude(mid);
+                if (targetLong == 0) {
+                    if (midLong > 300) low = mid; else high = mid;
+                } else {
+                    if (midLong < targetLong) low = mid; else high = mid;
+                }
+            }
+            return high;
+        }
+        prevLong = currLong;
+    }
+    return startJD + 30;
+}
 
 bool isGregorianLeap(int year) {
     if (year % 400 == 0) return true;
@@ -75,6 +143,38 @@ void printJulianDate(int d, int m, int y) {
     cout << "Julian Date            : " << julianDays << " " << monthNames[julianMonth] << " " << julianYear << "\n";
 }
 
+void getBanglaMonthLengths(int by, int version, int bLens[]) {
+    if (version == 3) {
+        double startJD = dateToJD(by + 593, 4, 10);
+        double targetLong = 0.0;
+        double prevJD = findSankranti(0.0, startJD);
+
+        for (int i = 0; i < 12; i++) {
+            targetLong = (i + 1) * 30.0;
+            if (targetLong >= 360.0) targetLong -= 360.0;
+
+            double nextJD = findSankranti(targetLong, prevJD + 28.0);
+
+            int startDay = (int)floor(prevJD + 0.5);
+            int nextDay = (int)floor(nextJD + 0.5);
+
+            bLens[i] = nextDay - startDay;
+            prevJD = nextJD;
+        }
+    } else {
+        bool isLeap = isGregorianLeap(by + 594);
+        if (version == 1 || version == 4) {
+            int base[] = {31, 31, 31, 31, 31, 30, 30, 30, 30, 30, 30, 30};
+            for(int i=0; i<12; i++) bLens[i] = base[i];
+            if (isLeap) bLens[10] = 31;
+        } else if (version == 2) {
+            int base[] = {31, 31, 31, 31, 31, 31, 30, 30, 30, 30, 29, 30};
+            for(int i=0; i<12; i++) bLens[i] = base[i];
+            if (isLeap) bLens[10] = 30;
+        }
+    }
+}
+
 void getBanglaDateDetails(int d, int m, int y, int ver, int &bd, string &bm, int &by) {
     string bMonths[] = {"Boishakh", "Jyoishtho", "Asharh", "Shrabon", "Bhadro", "Ashshin", "Kartik", "Ogrohayon", "Poush", "Magh", "Falgun", "Choitro"};
     int doy = getDayOfYear(d, m, y);
@@ -95,26 +195,10 @@ void getBanglaDateDetails(int d, int m, int y, int ver, int &bd, string &bm, int
     }
 
     int bLens[12];
-    if (ver == 1) {
-        int base[] = {31, 31, 31, 31, 31, 30, 30, 30, 30, 30, 30, 30};
-        for(int i=0; i<12; i++) bLens[i] = base[i];
-        if ((isGregorianLeap(y) && m <= 4) || (isGregorianLeap(y + 1) && m > 4)) bLens[10] = 31;
-    } else if (ver == 2) {
-        int base[] = {31, 31, 31, 31, 31, 31, 30, 30, 30, 30, 29, 30};
-        for(int i=0; i<12; i++) bLens[i] = base[i];
-        if ((isGregorianLeap(y) && m <= 4) || (isGregorianLeap(y + 1) && m > 4)) bLens[10] = 30;
-    } else if (ver == 3) {
-        int base[] = {31, 31, 32, 31, 31, 31, 30, 29, 29, 30, 30, 30};
-        for(int i=0; i<12; i++) bLens[i] = base[i];
-        if (isGregorianLeap(y)) bLens[11] = 31;
-    } else {
-        int base[] = {31, 31, 31, 31, 31, 30, 30, 30, 30, 30, 30, 30};
-        for(int i=0; i<12; i++) bLens[i] = base[i];
-        if (isGregorianLeap(y)) bLens[11] = 31;
-    }
+    getBanglaMonthLengths(by, ver, bLens);
 
     int idx = 0;
-    while (relDays > bLens[idx]) {
+    while (relDays > bLens[idx] && idx < 11) {
         relDays -= bLens[idx];
         idx++;
     }
@@ -122,11 +206,27 @@ void getBanglaDateDetails(int d, int m, int y, int ver, int &bd, string &bm, int
     bm = bMonths[idx];
 }
 
+bool isValidDate(int d, int m, int y) {
+    if (y < 1 || m < 1 || m > 12 || d < 1) return false;
+    int mLen[] = {0, 31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31};
+    if (isGregorianLeap(y)) mLen[2] = 29;
+    return d <= mLen[m];
+}
+
+void clearInput() {
+    cin.clear();
+    cin.ignore(numeric_limits<streamsize>::max(), '\n');
+}
+
 void runDateConversionOption() {
     int d, m, y;
     cout << "\nEnter Gregorian Date (DD MM YYYY): ";
-    cin >> d >> m >> y;
-    if (m < 1 || m > 12 || d < 1 || d > 31 || y < 1) { cout << "Invalid Date.\n"; return; }
+    if (!(cin >> d >> m >> y)) {
+        clearInput();
+        cout << "Invalid input format.\n";
+        return;
+    }
+    if (!isValidDate(d, m, y)) { cout << "Invalid Date.\n"; return; }
 
     string mNames[] = {"", "January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"};
     cout << "\n================ DATE CONVERSION RESULTS ================\n";
@@ -156,7 +256,7 @@ void printEnglishMonthGrid(int month, int year) {
     cout << "  S   M   T   W   T   F   S\n";
 
     int startDay = getDayOfWeekNum(1, month, year);
-    int spaces = (startDay + 1) % 7;
+    int spaces = (startDay + 6) % 7;
 
     for (int i = 0; i < spaces; i++) cout << "    ";
     for (int day = 1; day <= mLen[month]; day++) {
@@ -176,15 +276,7 @@ void printBanglaMonthGrid(int bMonthIdx, int bYear, int version) {
     if (isGregorianLeap(gregYear)) baseDoy++;
 
     int bLens[12];
-    if (version == 2) {
-        int base[] = {31, 31, 31, 31, 31, 31, 30, 30, 30, 30, 29, 30};
-        for(int i=0; i<12; i++) bLens[i] = base[i];
-        if (isGregorianLeap(gregYear)) bLens[10] = 30;
-    } else {
-        int base[] = {31, 31, 31, 31, 31, 30, 30, 30, 30, 30, 30, 30};
-        for(int i=0; i<12; i++) bLens[i] = base[i];
-        if (isGregorianLeap(gregYear)) bLens[11] = 31;
-    }
+    getBanglaMonthLengths(bYear, version, bLens);
 
     int accumulatedDays = 0;
     for (int i = 0; i < bMonthIdx; i++) accumulatedDays += bLens[i];
@@ -199,7 +291,7 @@ void printBanglaMonthGrid(int bMonthIdx, int bYear, int version) {
     int gd, gm;
     getGregorianFromDayOfYear(targetDoy, gregYear, gd, gm);
     int startDay = getDayOfWeekNum(gd, gm, gregYear);
-    int spaces = (startDay + 1) % 7;
+    int spaces = (startDay + 6) % 7;
 
     for (int i = 0; i < spaces; i++) cout << "    ";
     for (int day = 1; day <= bLens[bMonthIdx]; day++) {
@@ -221,23 +313,27 @@ void runYearCalendarOption() {
 
     int inputYear;
     cout << "Enter Year: ";
-    cin >> inputYear;
+    if (!(cin >> inputYear)) {
+        clearInput();
+        cout << "Invalid input format.\n";
+        return;
+    }
 
-    if (subOpt == "1.1") {
+    if (subOpt == "1.1" || subOpt == "1") {
         cout << "\nGenerating Bangla Calendar for " << inputYear << " BS (Bangladesh Modern 2019 Rules):\n";
         for (int m = 0; m < 12; m++) printBanglaMonthGrid(m, inputYear, 2);
     }
-    else if (subOpt == "1.2") {
+    else if (subOpt == "1.2" || subOpt == "2") {
         int convertedBanglaYear = inputYear - 593;
         cout << "\nEnglish Year " << inputYear << " maps primarily to Bangla Year " << convertedBanglaYear << " BS.\n";
         for (int m = 0; m < 12; m++) printBanglaMonthGrid(m, convertedBanglaYear, 2);
     }
-    else if (subOpt == "1.3") {
+    else if (subOpt == "1.3" || subOpt == "3") {
         int convertedGregorianYear = inputYear + 593;
         cout << "\nBangla Year " << inputYear << " BS intersects heavily with English Year " << convertedGregorianYear << ".\n";
         for (int m = 1; m <= 12; m++) printEnglishMonthGrid(m, convertedGregorianYear);
     }
-    else if (subOpt == "1.4") {
+    else if (subOpt == "1.4" || subOpt == "4") {
         cout << "\nGenerating English Year Calendar for " << inputYear << ":\n";
         for (int m = 1; m <= 12; m++) printEnglishMonthGrid(m, inputYear);
     }
@@ -256,7 +352,11 @@ int main() {
         cout << "3. Exit System\n";
         cout << "Choose Option: ";
         int choice;
-        cin >> choice;
+        if (!(cin >> choice)) {
+            clearInput();
+            cout << "Invalid input. Please enter a number.\n";
+            continue;
+        }
 
         if (choice == 1) {
             runYearCalendarOption();
