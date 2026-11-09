@@ -6,18 +6,9 @@
 #include <cmath>
 #include <algorithm>
 
-#ifndef M_PI
-#define M_PI 3.14159265358979323846
-#endif
-
 using namespace std;
 
-double dateToJD(int year, int month, int day) {
-    if (month <= 2) { year -= 1; month += 12; }
-    int A = year / 100;
-    int B = 2 - A + (A / 4);
-    return floor(365.25 * (year + 4716)) + floor(30.6001 * (month + 1)) + day + B - 1524.5;
-}
+// ===================== BASIC UTILITIES =====================
 
 long long gregorianToJDN(int y, int m, int d) {
     return (1461 * (y + 4800 + (m - 14) / 12)) / 4
@@ -94,22 +85,25 @@ void clearInput() {
     cin.ignore(numeric_limits<streamsize>::max(), '\n');
 }
 
-void getBanglaMonthLengths(int by, int version, int bLens[]) {
-    if (version == 3) {
-        int base[] = {31, 31, 31, 31, 31, 31, 30, 30, 30, 30, 30, 30};
-        for (int i = 0; i < 12; i++) bLens[i] = base[i];
+// ===================== BANGLA CALENDAR =====================
 
+void getBanglaMonthLengths(int by, int version, int bLens[]) {
+    if (version == 3) { // Traditional India (sidereal)
+        int base[] = {31, 31, 31, 31, 31, 30, 30, 30, 30, 30, 30, 30};
+        for (int i = 0; i < 12; i++) bLens[i] = base[i];
+        
+        // Leap day added to Choitro (index 11) for India Traditional
         if (isGregorianLeap(by + 594)) bLens[11] = 31;
     } else {
         bool isLeap = isGregorianLeap(by + 594);
-        if (version == 1 || version == 4) {
+        if (version == 1 || version == 4) { // BD old & India Saha
             int base[] = {31, 31, 31, 31, 31, 30, 30, 30, 30, 30, 30, 30};
             for (int i = 0; i < 12; i++) bLens[i] = base[i];
-            if (isLeap) bLens[10] = 31;
-        } else if (version == 2) {
+            if (isLeap) bLens[10] = 31; // Falgun leap
+        } else { // BD modern 2019+ (version 2 or default)
             int base[] = {31, 31, 31, 31, 31, 31, 30, 30, 30, 30, 29, 30};
             for (int i = 0; i < 12; i++) bLens[i] = base[i];
-            if (isLeap) bLens[10] = 30;
+            if (isLeap) bLens[10] = 30; // Falgun leap
         }
     }
 }
@@ -164,97 +158,12 @@ void banglaToGregorian(int bd, int bmIdx, int by, int ver, int &gd, int &gm, int
     if (doy > totalDays) {
         doy -= totalDays;
         gy++;
-    } else if (doy < 1) {
-        gy--;
-        totalDays = isGregorianLeap(gy) ? 366 : 365;
-        doy += totalDays;
     }
 
     getGregorianFromDayOfYear(doy, gy, gd, gm);
 }
 
-enum HijriScheme {
-    KUWAITI,
-    KUSHYAR,
-    STANDARD_II
-};
-
-bool isHijriLeap(int year, HijriScheme scheme) {
-    int r = year % 30;
-    if (r == 0) r = 30;
-
-    if (scheme == KUWAITI || scheme == KUSHYAR) {
-        int leapsKushyar[] = {2,5,7,10,13,15,18,21,24,26,29};
-        int leapsKuwaiti[] = {2,5,7,10,13,16,18,21,24,26,29};
-        int* leaps = (scheme == KUSHYAR) ? leapsKushyar : leapsKuwaiti;
-        for (int i = 0; i < 11; i++) if (leaps[i] == r) return true;
-        return false;
-    } else {
-        int leaps[] = {2,5,7,10,13,16,18,21,24,26,29};
-        for (int i = 0; i < 11; i++) if (leaps[i] == r) return true;
-        return false;
-    }
-}
-
-int hijriMonthLength(int month, int year, HijriScheme scheme) {
-    if (month % 2 == 1) return 30;
-    if (month == 12 && isHijriLeap(year, scheme)) return 30;
-    return 29;
-}
-
-const long long HIJRI_EPOCH_JDN = 1948440;
-
-long long hijriToJDN(int hy, int hm, int hd, HijriScheme scheme) {
-    long long days = (hy - 1) * 354LL;
-    int leaps = 0;
-    for (int y = 1; y < hy; y++) if (isHijriLeap(y, scheme)) leaps++;
-    days += leaps;
-
-    for (int m = 1; m < hm; m++) days += hijriMonthLength(m, hy, scheme);
-
-    days += (hd - 1);
-    return HIJRI_EPOCH_JDN + days;
-}
-
-void jdnToHijri(long long jdn, int &hy, int &hm, int &hd, HijriScheme scheme) {
-    long long days = jdn - HIJRI_EPOCH_JDN;
-    if (days < 0) {
-        hy = 1; hm = 1; hd = 1;
-        return;
-    }
-
-    hy = (int)(days / 354.36667) + 1;
-    while (true) {
-        long long startOfYear = hijriToJDN(hy, 1, 1, scheme);
-        long long startOfNext = hijriToJDN(hy + 1, 1, 1, scheme);
-        if (jdn >= startOfYear && jdn < startOfNext) break;
-        if (jdn < startOfYear) hy--;
-        else hy++;
-    }
-
-    long long startOfYear = hijriToJDN(hy, 1, 1, scheme);
-    long long remaining = jdn - startOfYear;
-
-    hm = 1;
-    while (hm <= 12) {
-        int len = hijriMonthLength(hm, hy, scheme);
-        if (remaining < len) {
-            hd = (int)remaining + 1;
-            break;
-        }
-        remaining -= len;
-        hm++;
-    }
-}
-
-string hijriMonthName(int m) {
-    string names[] = {
-        "", "Muharram", "Safar", "Rabi' al-Awwal", "Rabi' al-Thani",
-        "Jumada al-Ula", "Jumada al-Thani", "Rajab", "Sha'ban",
-        "Ramadan", "Shawwal", "Dhu al-Qa'dah", "Dhu al-Hijjah"
-    };
-    return (m >= 1 && m <= 12) ? names[m] : "Unknown";
-}
+// ===================== DATE ARITHMETIC =====================
 
 void addDaysToDate(int d, int m, int y, int delta, int &nd, int &nm, int &ny) {
     long long jdn = gregorianToJDN(y, m, d);
@@ -290,9 +199,10 @@ void dateDifference(int d1, int m1, int y1, int d2, int m2, int y2,
     }
 }
 
+// ===================== PRINT HELPERS =====================
+
 void printJulianDate(int d, int m, int y) {
-    long long totalDays = gregorianToJDN(y, m, d) - 1721426;
-    long long julianDays = totalDays + 2;
+    long long julianDays = gregorianToJDN(y, m, d) - 1721423;
 
     int julianYear = 1;
     while (true) {
@@ -303,13 +213,13 @@ void printJulianDate(int d, int m, int y) {
     }
     int julianMonths[] = {0, 31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31};
     if (isJulianLeap(julianYear)) julianMonths[2] = 29;
-
+    
     int julianMonth = 1;
     while (julianDays > julianMonths[julianMonth]) {
         julianDays -= julianMonths[julianMonth];
         julianMonth++;
     }
-
+    
     string monthNames[] = {"", "January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"};
     cout << "Julian Date            : " << julianDays << " " << monthNames[julianMonth] << " " << julianYear << "\n";
 }
@@ -370,8 +280,9 @@ void printBanglaMonthGrid(int bMonthIdx, int bYear, int version) {
     cout << "\n";
 }
 
+// ===================== MENU OPTIONS =====================
 
-void runDateConversionOption() {
+void convertGregorianToBangla() {
     int d, m, y;
     cout << "\nEnter Gregorian Date (DD MM YYYY): ";
     if (!(cin >> d >> m >> y)) {
@@ -384,59 +295,45 @@ void runDateConversionOption() {
     string mNames[] = {"", "January", "February", "March", "April", "May", "June",
                        "July", "August", "September", "October", "November", "December"};
     cout << "\n================ DATE CONVERSION RESULTS ================\n";
-    cout << "Gregorian Date         : " << d << " " << mNames[m] << " " << y << "\n";
-
+    cout << left << setw(23) << "Gregorian Date" << ": " << d << " " << mNames[m] << " " << y << "\n";
+    
     printJulianDate(d, m, y);
-
-    cout << "Day of the Week        : " << getDayOfWeek(d, m, y) << "\n";
+    
+    cout << left << setw(23) << "Day of the Week" << ": " << getDayOfWeek(d, m, y) << "\n";
     cout << "---------------------------------------------------------\n";
 
     int bd; string bm; int by;
     getBanglaDateDetails(d, m, y, 1, bd, bm, by);
-    cout << "Bangla (BD 1987-2018)  : " << bd << " " << bm << " " << by << " BS\n";
+    cout << left << setw(23) << "Bangla (BD 1987-2018)" << ": " << bd << " " << bm << " " << by << " BS\n";
     getBanglaDateDetails(d, m, y, 2, bd, bm, by);
-    cout << "Bangla (BD 2019-Pres)  : " << bd << " " << bm << " " << by << " BS\n";
+    cout << left << setw(23) << "Bangla (BD 2019-Pres)" << ": " << bd << " " << bm << " " << by << " BS\n";
     getBanglaDateDetails(d, m, y, 3, bd, bm, by);
-    cout << "Bangla (India Trad)    : " << bd << " " << bm << " " << by << " BS\n";
+    cout << left << setw(23) << "Bangla (India Trad)" << ": " << bd << " " << bm << " " << by << " BS\n";
     getBanglaDateDetails(d, m, y, 4, bd, bm, by);
-    cout << "Bangla (India Saha)    : " << bd << " " << bm << " " << by << " BS\n";
-
-    // Hijri conversions shown here for English -> Bengali
-    long long jdn = gregorianToJDN(y, m, d);
-    int hy, hm, hd;
-
-    jdnToHijri(jdn, hy, hm, hd, KUWAITI);
-    cout << "Hijri (Kuwaiti/MS)     : " << hd << " " << hijriMonthName(hm) << " " << hy << " AH\n";
-
-    jdnToHijri(jdn, hy, hm, hd, KUSHYAR);
-    cout << "Hijri (Kūshyār/Ulugh)  : " << hd << " " << hijriMonthName(hm) << " " << hy << " AH\n";
-
-    jdnToHijri(jdn, hy, hm, hd, STANDARD_II);
-    cout << "Hijri (Standard II)    : " << hd << " " << hijriMonthName(hm) << " " << hy << " AH\n";
+    cout << left << setw(23) << "Bangla (India Saha)" << ": " << bd << " " << bm << " " << by << " BS\n";
 
     cout << "=========================================================\n";
 }
 
-void runBanglaToGregorianOption() {
-    cout << "\n--- Bangla → Gregorian Conversion ---\n";
-    cout << "Enter Bangla day: ";
+void convertBanglaToGregorian() {
+    cout << "\nEnter Bangla day: ";
     int bd; cin >> bd;
     cout << "Enter Bangla month number (1=Boishakh ... 12=Choitro): ";
     int bm; cin >> bm;
     cout << "Enter Bangla year (BS): ";
     int by; cin >> by;
     cout << "Version (1=BD old, 2=BD 2019+, 3=India Trad, 4=India Saha) [default 2]: ";
-
+    
     int ver = 2;
     string verStr;
     getline(cin >> ws, verStr);
     if (!verStr.empty()) {
-        try { ver = stoi(verStr); }
+        try { ver = stoi(verStr); } 
         catch (...) { ver = 2; }
     }
 
-    if (bm < 1 || bm > 12 || bd < 1) {
-        cout << "Invalid Bangla date.\n";
+    if (bm < 1 || bm > 12 || bd < 1 || by < 1 || ver < 1 || ver > 4) {
+        cout << "Invalid input (Check date bounds and version 1-4).\n";
         return;
     }
 
@@ -446,22 +343,28 @@ void runBanglaToGregorianOption() {
     string mNames[] = {"", "January", "February", "March", "April", "May", "June",
                        "July", "August", "September", "October", "November", "December"};
     cout << "\n================ DATE CONVERSION RESULTS ================\n";
-    cout << "Corresponding Gregorian: " << gd << " " << mNames[gm] << " " << gy << "\n";
-    cout << "Day of Week            : " << getDayOfWeek(gd, gm, gy) << "\n";
-    cout << "---------------------------------------------------------\n";
-
-    long long jdn = gregorianToJDN(gy, gm, gd);
-    int hy, hm, hd;
-
-    jdnToHijri(jdn, hy, hm, hd, KUWAITI);
-    cout << "Hijri (Kuwaiti/MS)     : " << hd << " " << hijriMonthName(hm) << " " << hy << " AH\n";
-
-    jdnToHijri(jdn, hy, hm, hd, KUSHYAR);
-    cout << "Hijri (Kūshyār/Ulugh)  : " << hd << " " << hijriMonthName(hm) << " " << hy << " AH\n";
-
-    jdnToHijri(jdn, hy, hm, hd, STANDARD_II);
-    cout << "Hijri (Standard II)    : " << hd << " " << hijriMonthName(hm) << " " << hy << " AH\n";
+    cout << left << setw(23) << "Corresponding Gregorian" << ": " << gd << " " << mNames[gm] << " " << gy << "\n";
+    cout << left << setw(23) << "Day of Week" << ": " << getDayOfWeek(gd, gm, gy) << "\n";
     cout << "=========================================================\n";
+}
+
+void runMergedConversionMenu() {
+    cout << "\n--- Date Conversion Options ---\n";
+    cout << "2.1 Gregorian → Bangla\n";
+    cout << "2.2 Bangla → Gregorian\n";
+    cout << "Select Direction (2.1 or 2.2): ";
+    string subOpt;
+    cin >> subOpt;
+
+    if (subOpt == "2.1" || subOpt == "1") {
+        convertGregorianToBangla();
+    } 
+    else if (subOpt == "2.2" || subOpt == "2") {
+        convertBanglaToGregorian();
+    } 
+    else {
+        cout << "Invalid Selection.\n";
+    }
 }
 
 void runAgeCalculatorOption() {
@@ -541,21 +444,21 @@ void runYearCalendarOption() {
         return;
     }
 
-    if (subOpt == "1.1" || subOpt == "1") {
+    if (subOpt == "1.1") {
         cout << "\nGenerating Bangla Calendar for " << inputYear << " BS (Bangladesh Modern 2019 Rules):\n";
         for (int m = 0; m < 12; m++) printBanglaMonthGrid(m, inputYear, 2);
     }
-    else if (subOpt == "1.2" || subOpt == "2") {
+    else if (subOpt == "1.2") {
         int convertedBanglaYear = inputYear - 593;
         cout << "\nEnglish Year " << inputYear << " maps primarily to Bangla Year " << convertedBanglaYear << " BS.\n";
         for (int m = 0; m < 12; m++) printBanglaMonthGrid(m, convertedBanglaYear, 2);
     }
-    else if (subOpt == "1.3" || subOpt == "3") {
+    else if (subOpt == "1.3") {
         int convertedGregorianYear = inputYear + 593;
         cout << "\nBangla Year " << inputYear << " BS intersects heavily with English Year " << convertedGregorianYear << ".\n";
         for (int m = 1; m <= 12; m++) printEnglishMonthGrid(m, convertedGregorianYear);
     }
-    else if (subOpt == "1.4" || subOpt == "4") {
+    else if (subOpt == "1.4") {
         cout << "\nGenerating English Year Calendar for " << inputYear << ":\n";
         for (int m = 1; m <= 12; m++) printEnglishMonthGrid(m, inputYear);
     }
@@ -564,17 +467,18 @@ void runYearCalendarOption() {
     }
 }
 
+// ===================== MAIN =====================
+
 int main() {
     while (true) {
         cout << "\n=========================================================\n";
-        cout << "     Bengali – English – Hijri Calendar Conversion System\n";
+        cout << "         Bengali – English Calendar Conversion System\n";
         cout << "=========================================================\n";
         cout << "1. Year-Calendar Generator\n";
-        cout << "2. Single Date Conversion\n";
-        cout << "3. Bangla → Gregorian\n";
-        cout << "4. Age / Date Difference Calculator\n";
-        cout << "5. Add / Subtract Days from a Date\n";
-        cout << "6. Exit System\n";
+        cout << "2. Date Conversion (Gregorian ↔ Bangla)\n";
+        cout << "3. Age / Date Difference Calculator\n";
+        cout << "4. Add / Subtract Days from a Date\n";
+        cout << "5. Exit System\n";
         cout << "Choose Option: ";
         int choice;
         if (!(cin >> choice)) {
@@ -586,14 +490,12 @@ int main() {
         if (choice == 1) {
             runYearCalendarOption();
         } else if (choice == 2) {
-            runDateConversionOption();
+            runMergedConversionMenu();
         } else if (choice == 3) {
-            runBanglaToGregorianOption();
-        } else if (choice == 4) {
             runAgeCalculatorOption();
-        } else if (choice == 5) {
+        } else if (choice == 4) {
             runAddSubtractDaysOption();
-        } else if (choice == 6) {
+        } else if (choice == 5) {
             break;
         } else {
             cout << "Invalid Option. Try again.\n";
