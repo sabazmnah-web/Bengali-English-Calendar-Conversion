@@ -8,8 +8,6 @@
 
 using namespace std;
 
-// ===================== BASIC UTILITIES =====================
-
 long long gregorianToJDN(int y, int m, int d) {
     return (1461 * (y + 4800 + (m - 14) / 12)) / 4
          + (367 * (m - 2 - 12 * ((m - 14) / 12))) / 12
@@ -85,25 +83,22 @@ void clearInput() {
     cin.ignore(numeric_limits<streamsize>::max(), '\n');
 }
 
-// ===================== BANGLA CALENDAR =====================
-
 void getBanglaMonthLengths(int by, int version, int bLens[]) {
-    if (version == 3) { // Traditional India (sidereal)
+    if (version == 3) {
         int base[] = {31, 31, 31, 31, 31, 30, 30, 30, 30, 30, 30, 30};
         for (int i = 0; i < 12; i++) bLens[i] = base[i];
-        
-        // Leap day added to Choitro (index 11) for India Traditional
+
         if (isGregorianLeap(by + 594)) bLens[11] = 31;
     } else {
         bool isLeap = isGregorianLeap(by + 594);
-        if (version == 1 || version == 4) { // BD old & India Saha
+        if (version == 1 || version == 4) {
             int base[] = {31, 31, 31, 31, 31, 30, 30, 30, 30, 30, 30, 30};
             for (int i = 0; i < 12; i++) bLens[i] = base[i];
-            if (isLeap) bLens[10] = 31; // Falgun leap
-        } else { // BD modern 2019+ (version 2 or default)
+            if (isLeap) bLens[10] = 31;
+        } else {
             int base[] = {31, 31, 31, 31, 31, 31, 30, 30, 30, 30, 29, 30};
             for (int i = 0; i < 12; i++) bLens[i] = base[i];
-            if (isLeap) bLens[10] = 30; // Falgun leap
+            if (isLeap) bLens[10] = 30;
         }
     }
 }
@@ -163,8 +158,6 @@ void banglaToGregorian(int bd, int bmIdx, int by, int ver, int &gd, int &gm, int
     getGregorianFromDayOfYear(doy, gy, gd, gm);
 }
 
-// ===================== DATE ARITHMETIC =====================
-
 void addDaysToDate(int d, int m, int y, int delta, int &nd, int &nm, int &ny) {
     long long jdn = gregorianToJDN(y, m, d);
     jdn += delta;
@@ -199,8 +192,6 @@ void dateDifference(int d1, int m1, int y1, int d2, int m2, int y2,
     }
 }
 
-// ===================== PRINT HELPERS =====================
-
 void printJulianDate(int d, int m, int y) {
     long long julianDays = gregorianToJDN(y, m, d) - 1721423;
 
@@ -213,13 +204,13 @@ void printJulianDate(int d, int m, int y) {
     }
     int julianMonths[] = {0, 31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31};
     if (isJulianLeap(julianYear)) julianMonths[2] = 29;
-    
+
     int julianMonth = 1;
     while (julianDays > julianMonths[julianMonth]) {
         julianDays -= julianMonths[julianMonth];
         julianMonth++;
     }
-    
+
     string monthNames[] = {"", "January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"};
     cout << "Julian Date            : " << julianDays << " " << monthNames[julianMonth] << " " << julianYear << "\n";
 }
@@ -280,8 +271,6 @@ void printBanglaMonthGrid(int bMonthIdx, int bYear, int version) {
     cout << "\n";
 }
 
-// ===================== MENU OPTIONS =====================
-
 void convertGregorianToBangla() {
     int d, m, y;
     cout << "\nEnter Gregorian Date (DD MM YYYY): ";
@@ -296,9 +285,9 @@ void convertGregorianToBangla() {
                        "July", "August", "September", "October", "November", "December"};
     cout << "\n================ DATE CONVERSION RESULTS ================\n";
     cout << left << setw(23) << "Gregorian Date" << ": " << d << " " << mNames[m] << " " << y << "\n";
-    
+
     printJulianDate(d, m, y);
-    
+
     cout << left << setw(23) << "Day of the Week" << ": " << getDayOfWeek(d, m, y) << "\n";
     cout << "---------------------------------------------------------\n";
 
@@ -323,12 +312,12 @@ void convertBanglaToGregorian() {
     cout << "Enter Bangla year (BS): ";
     int by; cin >> by;
     cout << "Version (1=BD old, 2=BD 2019+, 3=India Trad, 4=India Saha) [default 2]: ";
-    
+
     int ver = 2;
     string verStr;
     getline(cin >> ws, verStr);
     if (!verStr.empty()) {
-        try { ver = stoi(verStr); } 
+        try { ver = stoi(verStr); }
         catch (...) { ver = 2; }
     }
 
@@ -358,10 +347,10 @@ void runMergedConversionMenu() {
 
     if (subOpt == "2.1" || subOpt == "1") {
         convertGregorianToBangla();
-    } 
+    }
     else if (subOpt == "2.2" || subOpt == "2") {
         convertBanglaToGregorian();
-    } 
+    }
     else {
         cout << "Invalid Selection.\n";
     }
@@ -466,8 +455,6 @@ void runYearCalendarOption() {
         cout << "Invalid Sub-option choice.\n";
     }
 }
-
-// ===================== MAIN =====================
 
 int main() {
     while (true) {
