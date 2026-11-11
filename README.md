@@ -2,28 +2,30 @@
 
 A comprehensive C++ command-line application designed to handle complex conversions, date arithmetic, and full-year grid generations across multiple calendar systems. It bridges historical and regional calendar standards in a single workspace.
 
-While primarily built for the Bangladeshi diaspora and locals, it is equally useful for global users needing precise Gregorian, Julian, or Islamic (Hijri) date calculations.
+While primarily built for the Bangladeshi diaspora and locals, it is equally useful for global users needing precise Gregorian, Julian, or regional Bangla date calculations.
 
 ## Features
 
-### 1. Single Date Conversion Matrix
+### 1. Date Conversion (Gregorian ↔ Bangla)
+A fully integrated, bi-directional conversion tool utilizing a unified sub-menu:
+
+**Gregorian ➔ Bangla (Option 2.1)**
 Input any standard Gregorian date to view its exact equivalent across multiple localized systems simultaneously:
-* **Julian Date** (Accounts for the historical astronomical day gap)
+* **Julian Date** (Accurately accounts for the historical astronomical day gap)
 * **Bangla (Bangladesh 1987–2018 Standard)**
 * **Bangla (Bangladesh 2019–Present Standard)**
 * **Bangla (India Traditional Standard)**
 * **Bangla (India Saha Committee / National Standard)**
-* **Hijri Calendar** (Calculated using 3 different schemes: Kuwaiti/Microsoft, Kūshyār, and Standard Type II)
 * **Day of the week calculation** (Powered by Zeller's Congruence)
 
-### 2. Reverse Conversion (Bangla ➔ English)
-Input any Bangla date (with your choice of the 4 regional standards) and instantly find the exact Gregorian date, day of the week, and corresponding Hijri date.
+**Bangla ➔ Gregorian (Option 2.2)**
+Input any Bangla date along with your choice of the 4 regional standards using a simplified single-line input (e.g., `23 2 1480 2`) to instantly find the exact Gregorian date and day of the week.
 
-### 3. Date Arithmetic (Time Machine)
+### 2. Date Arithmetic (Time Machine)
 * **Age / Date Difference Calculator:** Input two dates to calculate the exact difference in Years, Months, and Days, as well as the total number of days.
 * **Add / Subtract Days:** Input a starting date and a number of days (e.g., `+45` or `-30`). The system uses Julian Day Numbers to calculate the exact future or past date across Gregorian and Bangla calendars.
 
-### 4. Full-Year Calendar Generator
+### 3. Full-Year Calendar Generator
 Generates clean, properly aligned ASCII monthly calendar grids for a chosen year across four modes:
 * **Bangla Year ➔ Bangla Grid** (Using Modern Bangladesh 2019 standards)
 * **English Year ➔ Bangla Grid** (Finds the intersecting primary Bangla year)
@@ -32,9 +34,10 @@ Generates clean, properly aligned ASCII monthly calendar grids for a chosen year
 
 ## Technical Highlights
 
-* **Absolute Julian Day Number (JDN) Bridge:** All date arithmetic and conversions are routed through the JDN, eliminating floating-point errors and complex leap-year edge cases. 
-* **Astronomical Calculations:** The Indian Traditional calendar dynamically calculates the exact solar ingress (Sankranti) into sidereal zodiac signs, accounting for the precession of the equinoxes (Ayanamsa).
-* **Robust Input Validation:** The program safely handles invalid dates (like February 30th) and prevents infinite loops on accidental text inputs.
+* **Absolute Julian Day Number (JDN) Bridge:** All date arithmetic and conversions are routed through the JDN, eliminating floating-point errors and complex leap-year edge cases.
+* **Historical Julian Accuracy:** Correctly handles the 1-to-13 day gap between the Gregorian and Julian calendars depending on the century, using the exact historical epoch offsets.
+* **Mathematical Regional Models:** The India Traditional and Saha standards are handled using precise mathematical year-length models (5 months of 31 days, 7 months of 30 days, plus leap-day variations) to ensure zero drift.
+* **Robust Input Validation:** The program safely handles invalid dates (like February 30th) and prevents infinite loops on accidental text inputs. 
 
 ## How to Compile and Run
 
@@ -48,5 +51,5 @@ Generates clean, properly aligned ASCII monthly calendar grids for a chosen year
 ### Terminal / Command Line
 Compile using any standard GCC/G++ compiler:
 ```bash
-g++ -o calendar_system BengaliEnglishCalendarConversion.cpp
+g++ -o calendar_system main.cpp
 ./calendar_system
