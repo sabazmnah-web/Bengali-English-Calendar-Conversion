@@ -91,14 +91,14 @@ void getBanglaMonthLengths(int by, int version, int bLens[]) {
         if (isGregorianLeap(by + 594)) bLens[11] = 31;
     } else {
         bool isLeap = isGregorianLeap(by + 594);
-        if (version == 1 || version == 4) {
+        if (version == 1 || version == 4) { // BD old & India Saha
             int base[] = {31, 31, 31, 31, 31, 30, 30, 30, 30, 30, 30, 30};
             for (int i = 0; i < 12; i++) bLens[i] = base[i];
-            if (isLeap) bLens[10] = 31;
-        } else {
+            if (isLeap) bLens[10] = 31; // Falgun leap
+        } else { // BD modern 2019+ (version 2 or default)
             int base[] = {31, 31, 31, 31, 31, 31, 30, 30, 30, 30, 29, 30};
             for (int i = 0; i < 12; i++) bLens[i] = base[i];
-            if (isLeap) bLens[10] = 30;
+            if (isLeap) bLens[10] = 30; // Falgun leap
         }
     }
 }
@@ -271,6 +271,7 @@ void printBanglaMonthGrid(int bMonthIdx, int bYear, int version) {
     cout << "\n";
 }
 
+
 void convertGregorianToBangla() {
     int d, m, y;
     cout << "\nEnter Gregorian Date (DD MM YYYY): ";
@@ -305,15 +306,17 @@ void convertGregorianToBangla() {
 }
 
 void convertBanglaToGregorian() {
-    cout << "\nEnter Bangla day: ";
-    int bd; cin >> bd;
-    cout << "Enter Bangla month number (1=Boishakh ... 12=Choitro): ";
-    int bm; cin >> bm;
-    cout << "Enter Bangla year (BS): ";
-    int by; cin >> by;
-    cout << "Version (1=BD old, 2=BD 2019+, 3=India Trad, 4=India Saha) [default 2]: ";
+    cout << "\nEnter Bangla Date & Version (Day Month Year [Version 1-4]): ";
+    cout << "\n(e.g., 23 2 1480 2) > ";
 
-    int ver = 2;
+    int bd, bm, by;
+    if (!(cin >> bd >> bm >> by)) {
+        clearInput();
+        cout << "Invalid input format.\n";
+        return;
+    }
+
+    int ver = 2; // Default
     string verStr;
     getline(cin >> ws, verStr);
     if (!verStr.empty()) {
@@ -322,7 +325,7 @@ void convertBanglaToGregorian() {
     }
 
     if (bm < 1 || bm > 12 || bd < 1 || by < 1 || ver < 1 || ver > 4) {
-        cout << "Invalid input (Check date bounds and version 1-4).\n";
+        cout << "Invalid input (Check date bounds and Version 1-4).\n";
         return;
     }
 
@@ -331,8 +334,9 @@ void convertBanglaToGregorian() {
 
     string mNames[] = {"", "January", "February", "March", "April", "May", "June",
                        "July", "August", "September", "October", "November", "December"};
+
     cout << "\n================ DATE CONVERSION RESULTS ================\n";
-    cout << left << setw(23) << "Corresponding Gregorian" << ": " << gd << " " << mNames[gm] << " " << gy << "\n";
+    cout << left << setw(23) << "Gregorian Date" << ": " << gd << " " << mNames[gm] << " " << gy << "\n";
     cout << left << setw(23) << "Day of Week" << ": " << getDayOfWeek(gd, gm, gy) << "\n";
     cout << "=========================================================\n";
 }
